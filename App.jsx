@@ -4,6 +4,8 @@ import Alerts from './src/components/Alerts';
 import StatusBar from './src/components/StatusBar';
 import CurrentWeather from './src/components/CurrentWeather';
 import WeatherDetails from './src/components/WeatherDetails';
+import SurvivalGuide from './src/components/SurvivalGuide';
+import PinnedTicker from './src/components/PinnedTicker';
 import Radar from './src/components/Radar';
 import HourlyForecast from './src/components/HourlyForecast';
 import PressureGraph from './src/components/PressureGraph';
@@ -18,6 +20,7 @@ const NoFrillsWeather = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
+  const [airQualityData, setAirQualityData] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [unit, setUnit] = useState(() => localStorage.getItem('nfw_unit') || "imperial"); 
   const [showRaw, setShowRaw] = useState(false);
@@ -49,9 +52,9 @@ const NoFrillsWeather = () => {
         latitude: lat,
         longitude: lon,
         timezone: timezone === 'auto' ? 'auto' : timezone,
-        current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl",
+        current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,dew_point_2m",
         hourly: "temperature_2m,precipitation_probability,weather_code,wind_speed_10m,pressure_msl",
-        daily: "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum",
+        daily: "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,uv_index_max",
     });
 
     if (unitSystem === 'imperial') {
@@ -98,6 +101,20 @@ const NoFrillsWeather = () => {
     return await response.json();
   };
 
+  const fetchAirQuality = async (lat, lon, signal) => {
+     try {
+         const response = await fetch(
+             `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5,ozone`,
+             { signal }
+         );
+         if (!response.ok) return null;
+         return await response.json();
+     } catch (e) {
+         console.warn("AQI Fetch Failed", e);
+         return null;
+     }
+  };
+
   const fetchAlerts = async (lat, lon, signal) => {
       try {
           // Point query to NWS
@@ -124,6 +141,7 @@ const NoFrillsWeather = () => {
       setLoading(true);
       setError(null);
       setAlerts([]);
+      setAirQualityData(null);
 
       try {
           let geoData;
@@ -146,6 +164,7 @@ const NoFrillsWeather = () => {
 
           // 3. Parallel Fetch
           const weatherPromise = fetchWeather(geoData.latitude, geoData.longitude, geoData.timezone, controller.signal);
+          const aqiPromise = fetchAirQuality(geoData.latitude, geoData.longitude, controller.signal);
           
           let alertsPromise = Promise.resolve([]);
           // Only attempt NWS alerts if it looks like US or we are in GPS mode (let API decide)
@@ -153,9 +172,10 @@ const NoFrillsWeather = () => {
               alertsPromise = fetchAlerts(geoData.latitude, geoData.longitude, controller.signal);
           }
 
-          const [wData, alertsData] = await Promise.all([weatherPromise, alertsPromise]);
+          const [wData, aqiData, alertsData] = await Promise.all([weatherPromise, aqiPromise, alertsPromise]);
 
           setWeatherData({ geo: geoData, weather: wData });
+          setAirQualityData(aqiData);
           setAlerts(alertsData);
           setSearchInput("");
 
@@ -226,6 +246,13 @@ const NoFrillsWeather = () => {
           setShowRaw={setShowRaw}
         />
 
+        <PinnedTicker 
+            currentGeo={weatherData?.geo} 
+            loadLocation={loadDataByCoords}
+            currentTemp={weatherData?.weather.current.temperature_2m}
+            unit={unit}
+        />
+
         <Alerts alerts={alerts} />
 
         <StatusBar loading={loading} error={error} />
@@ -246,6 +273,8 @@ const NoFrillsWeather = () => {
               <WeatherDetails weatherData={weatherData} />
             </div>
 
+            <SurvivalGuide weatherData={weatherData.weather} airQuality={airQualityData} />
+
             <Radar 
               geo={weatherData.geo} 
               interactive={radarInteractive} 
@@ -263,7 +292,7 @@ const NoFrillsWeather = () => {
           </div>
         )}
 
-        {showRaw && <RawDataViewer data={weatherData} />}
+        {showRaw && <RawDataViewer data={{weather: weatherData, aqi: airQualityData}} />}
         
         {loading && <LoadingScreen />}
 
