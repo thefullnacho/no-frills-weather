@@ -53,8 +53,8 @@ const NoFrillsWeather = () => {
         longitude: lon,
         timezone: timezone === 'auto' ? 'auto' : timezone,
         current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,dew_point_2m",
-        hourly: "temperature_2m,precipitation_probability,weather_code,wind_speed_10m,pressure_msl",
-        daily: "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,uv_index_max",
+        hourly: "temperature_2m,precipitation_probability,weather_code,wind_speed_10m,pressure_msl,snowfall",
+        daily: "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,snowfall_sum,uv_index_max",
     });
 
     if (unitSystem === 'imperial') {
@@ -281,11 +281,11 @@ const NoFrillsWeather = () => {
               setInteractive={setRadarInteractive} 
             />
 
-            <HourlyForecast hourlyData={weatherData.weather.hourly} />
+            <HourlyForecast hourlyData={weatherData.weather.hourly} unit={unit} currentTime={weatherData.weather.current.time} />
 
             <PressureGraph hourly={weatherData.weather.hourly} unit={unit} />
 
-            <DailyForecast dailyData={weatherData.weather.daily} WeatherCodeMap={WeatherCodeMap} />
+            <DailyForecast dailyData={weatherData.weather.daily} WeatherCodeMap={WeatherCodeMap} unit={unit} />
 
             <AlertDetails alerts={alerts} />
 

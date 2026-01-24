@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatDate } from '../utils/weatherUtils';
 
-const DailyForecast = ({ dailyData, WeatherCodeMap }) => {
+const DailyForecast = ({ dailyData, WeatherCodeMap, unit }) => {
   if (!dailyData) return null;
 
   return (
@@ -10,7 +10,11 @@ const DailyForecast = ({ dailyData, WeatherCodeMap }) => {
             7_DAY_FORECAST
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2">
-            {dailyData.time.slice(0, 7).map((day, i) => (
+            {dailyData.time.slice(0, 7).map((day, i) => {
+                const snowSum = dailyData.snowfall_sum ? dailyData.snowfall_sum[i] : 0;
+                const isSnow = snowSum > 0;
+                
+                return (
                 <div key={day} className={`
                     p-4 border-black border-b-2 lg:border-b-0 lg:border-r-2
                     ${i === 3 || i === 7 ? 'lg:border-r-0' : ''}
@@ -22,6 +26,11 @@ const DailyForecast = ({ dailyData, WeatherCodeMap }) => {
                         <span className="block text-sm font-bold mt-1 max-w-[120px] truncate">
                             {WeatherCodeMap[dailyData.weather_code[i]]}
                         </span>
+                        {isSnow && (
+                             <span className="block text-xs font-bold text-cyan-700 bg-cyan-100 px-1 rounded mt-1 w-fit">
+                                Snow: {snowSum} {unit === 'imperial' ? 'in' : 'cm'}
+                             </span>
+                        )}
                     </div>
                     <div className="flex gap-4 lg:gap-2 items-center lg:mt-4">
                         <div className="text-right lg:text-left">
@@ -35,7 +44,7 @@ const DailyForecast = ({ dailyData, WeatherCodeMap }) => {
                         </div>
                     </div>
                 </div>
-            ))}
+            )})}
              <div className="hidden lg:flex border-t-2 border-black bg-black text-white p-6 flex-col justify-center items-center">
                  <span className="text-4xl font-black">END</span>
                  <span className="text-xs uppercase">OF DATA STREAM</span>
